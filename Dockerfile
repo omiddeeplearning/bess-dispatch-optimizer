@@ -24,5 +24,5 @@ COPY . .
 EXPOSE 8080
 
 # Define the command to run the app when the container starts.
-# This tells Streamlit to use the port provided by the $PORT environment variable.
-CMD ["streamlit", "run", "app.py", "--server.port=$PORT", "--server.address=0.0.0.0"]
+# This "shell" form correctly uses the $PORT variable provided by Cloud Run.
+CMD streamlit run app.py --server.port=$PORT --server.address=0.0.0.0
