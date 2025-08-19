@@ -5,3 +5,4 @@ pyomo
 xlsxwriter
 seaborn
 streamlit
+plotly
