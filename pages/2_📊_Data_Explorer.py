@@ -3,7 +3,7 @@ import streamlit as st
 import pandas as pd
 
 st.set_page_config(
-    page_title="Data Explorer",
+    page_title="BESS Dispatch Optimizer",
     page_icon="🔎",
     layout="wide"
 )

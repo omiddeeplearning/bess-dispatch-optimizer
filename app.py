@@ -3,7 +3,7 @@ import streamlit as st
 
 # --- Page Configuration ---
 st.set_page_config(
-    page_title="BESS Dispatch Optimizer | About",
+    page_title="BESS Dispatch Optimizer",
     page_icon="🔋",
     layout="wide"
 )

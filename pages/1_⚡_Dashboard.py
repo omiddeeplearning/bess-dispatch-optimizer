@@ -8,7 +8,7 @@ import io
 
 # --- Page Configuration ---
 st.set_page_config(
-    page_title="BESS Optimizer Dashboard",
+    page_title="BESS Dispatch Optimizer",
     page_icon="🔋",
     layout="wide"
 )
@@ -68,6 +68,26 @@ data_source = st.radio(
 price_df = None
 if data_source == "Upload your own CSV file":
     uploaded_file = st.file_uploader("Upload Price Data (CSV)", type="csv")
+    with st.expander("View Required CSV Format"):
+        st.markdown("""
+        The CSV file must contain three columns in the specified order:
+        1.  `UTC_PERIOD_START_DATETIME`: Timestamps for the price periods (e.g., `2023-01-01 00:00:00+00:00`).
+        2.  `N2EX`: Day-Ahead (DA) market prices in £/MWh.
+        3.  `MIP`: Intra-Day (ID) market prices in £/MWh.
+        """)
+        sample_data = {
+            'UTC_PERIOD_START_DATETIME': ['2023-01-01 00:00:00+00:00', '2023-01-01 00:30:00+00:00'],
+            'N2EX': [68.0, 68.0],
+            'MIP': [68.54, 69.82]
+        }
+        sample_df = pd.DataFrame(sample_data)
+        st.dataframe(sample_df)
+        st.download_button(
+            label="Download Template CSV",
+            data=sample_df.to_csv(index=False).encode('utf-8'),
+            file_name='price_data_template.csv',
+            mime='text/csv',
+        )
     if uploaded_file:
         price_df = pd.read_csv(uploaded_file)
 else:
