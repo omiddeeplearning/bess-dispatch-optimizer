@@ -5,6 +5,8 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from optimization_engine import DA_Dispatch, ID_Dispatch
 import io
+import json
+from streamlit.components.v1 import html
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -30,6 +32,60 @@ if 'selected_price' not in st.session_state:
     st.session_state['selected_price'] = None
 if 'BESS_Power' not in st.session_state:
     st.session_state['BESS_Power'] = 0
+if 'llm_interpretation' not in st.session_state:
+    st.session_state['llm_interpretation'] = ""
+
+
+# --- LLM Helper Function ---
+async def get_llm_interpretation(results_summary, price_summary):
+    """
+    Sends a summary of the optimization results to the Gemini API
+    and returns a natural language interpretation.
+    """
+    prompt = f"""
+    You are an expert financial analyst in the energy sector. Your task is to provide a concise, insightful summary of a Battery Energy Storage System (BESS) dispatch optimization.
+
+    Based on the following results and market price data, provide a brief analysis (in 4-5 bullet points). 
+    In addition to the points below, please analyze the price data to identify potential arbitrage opportunities (significant spreads between high and low prices) and comment on how effectively the optimization strategy captured these opportunities.
+
+    Focus on:
+    1.  Overall revenue performance.
+    2.  The market participation split (Day-Ahead vs. Intra-Day).
+    3.  Notable strategic behavior (e.g., capitalizing on price volatility).
+    4.  How well the strategy captured available price spreads in the markets.
+
+    Results Summary:
+    - Total Revenue: £{results_summary['total_revenue']:,.2f}
+    - Day-Ahead (DA) Market Revenue: £{results_summary['da_revenue']:,.2f}
+    - Intra-Day (ID) Market Revenue: £{results_summary['id_revenue']:,.2f}
+    - DA Revenue Percentage: {results_summary['da_percentage']:.1f}%
+    - ID Revenue Percentage: {results_summary['id_percentage']:.1f}%
+    - Total Simulation Days: {results_summary['total_days']}
+    - Average Daily Revenue: £{results_summary['avg_daily_revenue']:,.2f}
+    - BESS Power: {results_summary['bess_power']} MW
+    - BESS Capacity: {results_summary['bess_capacity']} MWh
+
+    Market Price Summary (£/MWh) for the period:
+    - DA Price - Min: {price_summary['da_min']:.2f}, Max: {price_summary['da_max']:.2f}, Avg: {price_summary['da_avg']:.2f}
+    - ID Price - Min: {price_summary['id_min']:.2f}, Max: {price_summary['id_max']:.2f}, Avg: {price_summary['id_avg']:.2f}
+
+    Please begin your analysis with a clear, one-sentence summary.
+    """
+    
+    chat_history = [{"role": "user", "parts": [{"text": prompt}]}]
+    payload = {"contents": chat_history}
+    api_key = "" 
+    api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={api_key}"
+    
+    import httpx
+    async with httpx.AsyncClient() as client:
+        response = await client.post(api_url, json=payload, headers={'Content-Type': 'application/json'})
+    
+    if response.status_code == 200:
+        result = response.json()
+        if result.get('candidates'):
+            return result['candidates'][0]['content']['parts'][0]['text']
+    return "Analysis could not be generated at this time."
 
 
 # --- App Title and Description ---
@@ -68,26 +124,6 @@ data_source = st.radio(
 price_df = None
 if data_source == "Upload your own CSV file":
     uploaded_file = st.file_uploader("Upload Price Data (CSV)", type="csv")
-    with st.expander("View Required CSV Format"):
-        st.markdown("""
-        The CSV file must contain three columns in the specified order:
-        1.  `UTC_PERIOD_START_DATETIME`: Timestamps for the price periods (e.g., `2023-01-01 00:00:00+00:00`).
-        2.  `N2EX`: Day-Ahead (DA) market prices in £/MWh.
-        3.  `MIP`: Intra-Day (ID) market prices in £/MWh.
-        """)
-        sample_data = {
-            'UTC_PERIOD_START_DATETIME': ['2023-01-01 00:00:00+00:00', '2023-01-01 00:30:00+00:00'],
-            'N2EX': [68.0, 68.0],
-            'MIP': [68.54, 69.82]
-        }
-        sample_df = pd.DataFrame(sample_data)
-        st.dataframe(sample_df)
-        st.download_button(
-            label="Download Template CSV",
-            data=sample_df.to_csv(index=False).encode('utf-8'),
-            file_name='price_data_template.csv',
-            mime='text/csv',
-        )
     if uploaded_file:
         price_df = pd.read_csv(uploaded_file)
 else:
@@ -165,15 +201,7 @@ if st.session_state.get('total_results') is not None:
     selected_price = st.session_state['selected_price']
     BESS_Power = st.session_state['BESS_Power']
 
-    # --- Define Color Palette ---
-    DA_COLOR = '#F08080'  # Light Coral
-    ID_COLOR = '#6495ED'  # Cornflower Blue
-    CHARGE_DA_COLOR = '#8FBC8F' # Dark Sea Green
-    CHARGE_ID_COLOR = '#98FB98' # Pale Green
-    SOC_COLOR = '#ADD8E6' # Light Blue
-    PRICE_DA_COLOR = 'rgba(255, 255, 255, 0.5)'
-    PRICE_ID_COLOR = 'rgba(200, 200, 200, 0.5)'
-
+    DA_COLOR, ID_COLOR, CHARGE_DA_COLOR, CHARGE_ID_COLOR, SOC_COLOR, PRICE_DA_COLOR, PRICE_ID_COLOR = '#F08080', '#6495ED', '#8FBC8F', '#98FB98', '#ADD8E6', 'rgba(255, 255, 255, 0.5)', 'rgba(200, 200, 200, 0.5)'
 
     st.subheader("Key Performance Indicators")
     da_revenue = total_results['DA_Revenue_GBP'].sum()
@@ -187,6 +215,30 @@ if st.session_state.get('total_results') is not None:
 
     st.markdown("---")
     
+    st.subheader("🤖 AI-Powered Analysis")
+    if st.button("Generate Analysis"):
+        with st.spinner("AI is analyzing the results..."):
+            total_days = (selected_price.index.max() - selected_price.index.min()).days
+            results_summary = {
+                "total_revenue": total_revenue, "da_revenue": da_revenue, "id_revenue": id_revenue,
+                "da_percentage": (da_revenue / total_revenue * 100) if total_revenue else 0,
+                "id_percentage": (id_revenue / total_revenue * 100) if total_revenue else 0,
+                "total_days": total_days,
+                "avg_daily_revenue": total_revenue / total_days if total_days > 0 else 0,
+                "bess_power": BESS_Power, "bess_capacity": BESS_Size
+            }
+            price_summary = {
+                "da_min": selected_price['DA[GBP/MWh]'].min(), "da_max": selected_price['DA[GBP/MWh]'].max(), "da_avg": selected_price['DA[GBP/MWh]'].mean(),
+                "id_min": selected_price['ID[GBP/MWh]'].min(), "id_max": selected_price['ID[GBP/MWh]'].max(), "id_avg": selected_price['ID[GBP/MWh]'].mean(),
+            }
+            import asyncio
+            st.session_state.llm_interpretation = asyncio.run(get_llm_interpretation(results_summary, price_summary))
+
+    if st.session_state.llm_interpretation:
+        st.markdown(st.session_state.llm_interpretation)
+
+    st.markdown("---")
+
     col_rev1, col_rev2, col_rev3 = st.columns(3)
     with col_rev1:
         st.markdown("##### Daily Revenue (£/MW/Day)")
