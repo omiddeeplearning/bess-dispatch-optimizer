@@ -7,6 +7,8 @@ from optimization_engine import DA_Dispatch, ID_Dispatch
 import io
 import json
 import requests # Use the standard requests library
+import vertexai
+from vertexai.generative_models import GenerativeModel
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -36,63 +38,54 @@ if 'llm_interpretation' not in st.session_state:
     st.session_state['llm_interpretation'] = ""
 
 
-# --- LLM Helper Function (Corrected with Detailed Error Handling) ---
+# --- LLM Helper Function (Corrected for Vertex AI) ---
 def get_llm_interpretation(results_summary, price_summary):
     """
-    Sends a summary of the optimization results to the Gemini API
+    Sends a summary of the optimization results to the Vertex AI Gemini API
     and returns a natural language interpretation.
     """
-    prompt = f"""
-    You are an expert financial analyst in the energy sector. Your task is to provide a concise, insightful summary of a Battery Energy Storage System (BESS) dispatch optimization.
-
-    Based on the following results and market price data, provide a brief analysis (in 4-5 bullet points). 
-    In addition to the points below, please analyze the price data to identify potential arbitrage opportunities (significant spreads between high and low prices) and comment on how effectively the optimization strategy captured these opportunities.
-
-    Focus on:
-    1.  Overall revenue performance.
-    2.  The market participation split (Day-Ahead vs. Intra-Day).
-    3.  Notable strategic behavior (e.g., capitalizing on price volatility).
-    4.  How well the strategy captured available price spreads in the markets.
-
-    Results Summary:
-    - Total Revenue: £{results_summary['total_revenue']:,.2f}
-    - Day-Ahead (DA) Market Revenue: £{results_summary['da_revenue']:,.2f}
-    - Intra-Day (ID) Market Revenue: £{results_summary['id_revenue']:,.2f}
-    - DA Revenue Percentage: {results_summary['da_percentage']:.1f}%
-    - ID Revenue Percentage: {results_summary['id_percentage']:.1f}%
-    - Total Simulation Days: {results_summary['total_days']}
-    - Average Daily Revenue: £{results_summary['avg_daily_revenue']:,.2f}
-    - BESS Power: {results_summary['bess_power']} MW
-    - BESS Capacity: {results_summary['bess_capacity']} MWh
-
-    Market Price Summary (£/MWh) for the period:
-    - DA Price - Min: {price_summary['da_min']:.2f}, Max: {price_summary['da_max']:.2f}, Avg: {price_summary['da_avg']:.2f}
-    - ID Price - Min: {price_summary['id_min']:.2f}, Max: {price_summary['id_max']:.2f}, Avg: {price_summary['id_avg']:.2f}
-
-    Please begin your analysis with a clear, one-sentence summary.
-    """
-    
-    chat_history = [{"role": "user", "parts": [{"text": prompt}]}]
-    payload = {"contents": chat_history}
-    api_key = "" 
-    api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={api_key}"
-    
     try:
-        response = requests.post(api_url, json=payload, headers={'Content-Type': 'application/json'})
-        response.raise_for_status() # Will raise an HTTPError for bad responses (4xx or 5xx)
-        result = response.json()
-        if result.get('candidates'):
-            return result['candidates'][0]['content']['parts'][0]['text']
-        else:
-            # This case handles a successful call that returns an empty or unexpected response
-            return f"Analysis could not be generated. API response was empty. Details: {response.text}"
-    except requests.exceptions.HTTPError as err:
-        # This will catch the 403 error and provide the detailed message from the server
-        return f"**Analysis failed due to a permissions error (HTTP {err.response.status_code}).**\n\n**Details:** {err.response.json().get('error', {}).get('message', 'No details provided.')}"
-    except requests.exceptions.RequestException as e:
-        return f"Analysis failed due to a network error: {e}"
+        # Initialize Vertex AI. This will automatically use the project's service account on Cloud Run.
+        vertexai.init()
+        
+        # Load the Gemini model
+        model = GenerativeModel("gemini-1.5-flash-001")
+
+        prompt = f"""
+        You are an expert financial analyst in the energy sector. Your task is to provide a concise, insightful summary of a Battery Energy Storage System (BESS) dispatch optimization.
+
+        Based on the following results and market price data, provide a brief analysis (in 4-5 bullet points). 
+        In addition to the points below, please analyze the price data to identify potential arbitrage opportunities (significant spreads between high and low prices) and comment on how effectively the optimization strategy captured these opportunities.
+
+        Focus on:
+        1.  Overall revenue performance.
+        2.  The market participation split (Day-Ahead vs. Intra-Day).
+        3.  Notable strategic behavior (e.g., capitalizing on price volatility).
+        4.  How well the strategy captured available price spreads in the markets.
+
+        Results Summary:
+        - Total Revenue: £{results_summary['total_revenue']:,.2f}
+        - Day-Ahead (DA) Market Revenue: £{results_summary['da_revenue']:,.2f}
+        - Intra-Day (ID) Market Revenue: £{results_summary['id_revenue']:,.2f}
+        - DA Revenue Percentage: {results_summary['da_percentage']:.1f}%
+        - ID Revenue Percentage: {results_summary['id_percentage']:.1f}%
+        - Total Simulation Days: {results_summary['total_days']}
+        - Average Daily Revenue: £{results_summary['avg_daily_revenue']:,.2f}
+        - BESS Power: {results_summary['bess_power']} MW
+        - BESS Capacity: {results_summary['bess_capacity']} MWh
+
+        Market Price Summary (£/MWh) for the period:
+        - DA Price - Min: {price_summary['da_min']:.2f}, Max: {price_summary['da_max']:.2f}, Avg: {price_summary['da_avg']:.2f}
+        - ID Price - Min: {price_summary['id_min']:.2f}, Max: {price_summary['id_max']:.2f}, Avg: {price_summary['id_avg']:.2f}
+
+        Please begin your analysis with a clear, one-sentence summary.
+        """
+        
+        response = model.generate_content(prompt)
+        return response.text
+
     except Exception as e:
-        return f"An unexpected error occurred during analysis: {e}"
+        return f"An error occurred during AI analysis: {e}"
 
 
 # --- App Title and Description ---
@@ -198,7 +191,7 @@ if price_df is not None:
                 st.session_state['total_results'] = pd.concat([final_DA_results_df, final_ID_results_df], axis=1)
                 st.session_state['selected_price'] = selected_price
                 st.session_state['BESS_Power'] = BESS_Power
-                st.session_state['llm_interpretation'] = "" # Clear previous analysis
+                st.session_state['llm_interpretation'] = ""
 
     except Exception as e:
         st.error(f"An error occurred: {e}")
