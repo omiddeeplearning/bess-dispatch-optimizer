@@ -6,4 +6,4 @@ xlsxwriter
 seaborn
 streamlit
 plotly
-google-cloud-aiplatform
+google-cloud-aiplatform>=1.43.0
