@@ -48,7 +48,7 @@ def get_llm_interpretation(results_summary, price_summary):
         # Initialize Vertex AI with your specific project and location.
         # The location MUST match the region of your Cloud Run service.
         PROJECT_ID = "bess-dispatch-app"  # <-- Your Google Cloud Project ID
-        LOCATION = "us-central1"        # <-- The region of your Cloud Run service
+        LOCATION = "europe-west2"        # <-- The region of your Cloud Run service
 
         vertexai.init(project=PROJECT_ID, location=LOCATION)
         
