@@ -52,8 +52,8 @@ def get_llm_interpretation(results_summary, price_summary):
 
         vertexai.init(project=PROJECT_ID, location=LOCATION)
         
-        # Load the Gemini model
-        model = GenerativeModel("gemini-1.5-flash-001")
+        # Load the Gemini model - Switched to a globally available model version
+        model = GenerativeModel("gemini-1.0-pro")
 
         prompt = f"""
         You are an expert financial analyst in the energy sector. Your task is to provide a concise, insightful summary of a Battery Energy Storage System (BESS) dispatch optimization.
