@@ -6,6 +6,8 @@ from plotly.subplots import make_subplots
 from optimization_engine import DA_Dispatch, ID_Dispatch
 import io
 import json
+import vertexai
+from vertexai.generative_models import GenerativeModel
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -35,22 +37,18 @@ if 'llm_interpretation' not in st.session_state:
     st.session_state['llm_interpretation'] = ""
 
 
-# --- LLM Helper Function (Corrected for Vertex AI and Lazy Loading) ---
+# --- LLM Helper Function (Corrected for Vertex AI) ---
 def get_llm_interpretation(results_summary, price_summary):
     """
     Sends a summary of the optimization results to the Vertex AI Gemini API
     and returns a natural language interpretation.
     """
     try:
-        # Lazy load the library to prevent startup issues on Cloud Run
-        import vertexai
-        from vertexai.generative_models import GenerativeModel
-
         # --- IMPORTANT ---
         # Initialize Vertex AI with your specific project and location.
         # The location MUST match the region of your Cloud Run service.
         PROJECT_ID = "bess-dispatch-app"  # <-- Your Google Cloud Project ID
-        LOCATION = "us-central1"        # <-- The region of your Cloud Run service
+        LOCATION = "europe-west2"        # <-- The region of your Cloud Run service
 
         vertexai.init(project=PROJECT_ID, location=LOCATION)
         
