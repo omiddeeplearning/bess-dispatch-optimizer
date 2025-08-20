@@ -191,6 +191,7 @@ if price_df is not None:
                 st.session_state['total_results'] = pd.concat([final_DA_results_df, final_ID_results_df], axis=1)
                 st.session_state['selected_price'] = selected_price
                 st.session_state['BESS_Power'] = BESS_Power
+                st.session_state['llm_interpretation'] = "" # Clear previous analysis
 
     except Exception as e:
         st.error(f"An error occurred: {e}")
