@@ -24,8 +24,8 @@ def run_gemini_test():
 
         vertexai.init(project=PROJECT_ID, location=LOCATION)
         
-        # Load the Gemini model
-        model = GenerativeModel("gemini-1.5-flash-001")
+        # Load the Gemini model - Using the correct auto-updated alias
+        model = GenerativeModel("gemini-1.5-flash")
 
         prompt = "Hello! In one sentence, what is a Battery Energy Storage System?"
         
