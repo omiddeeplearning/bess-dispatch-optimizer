@@ -36,7 +36,7 @@ if 'llm_interpretation' not in st.session_state:
     st.session_state['llm_interpretation'] = ""
 
 
-# --- LLM Helper Function (Corrected) ---
+# --- LLM Helper Function (Corrected with Detailed Error Handling) ---
 def get_llm_interpretation(results_summary, price_summary):
     """
     Sends a summary of the optimization results to the Gemini API
@@ -84,7 +84,11 @@ def get_llm_interpretation(results_summary, price_summary):
         if result.get('candidates'):
             return result['candidates'][0]['content']['parts'][0]['text']
         else:
+            # This case handles a successful call that returns an empty or unexpected response
             return f"Analysis could not be generated. API response was empty. Details: {response.text}"
+    except requests.exceptions.HTTPError as err:
+        # This will catch the 403 error and provide the detailed message from the server
+        return f"**Analysis failed due to a permissions error (HTTP {err.response.status_code}).**\n\n**Details:** {err.response.json().get('error', {}).get('message', 'No details provided.')}"
     except requests.exceptions.RequestException as e:
         return f"Analysis failed due to a network error: {e}"
     except Exception as e:
@@ -194,7 +198,7 @@ if price_df is not None:
                 st.session_state['total_results'] = pd.concat([final_DA_results_df, final_ID_results_df], axis=1)
                 st.session_state['selected_price'] = selected_price
                 st.session_state['BESS_Power'] = BESS_Power
-                st.session_state['llm_interpretation'] = "" # Clear previous analysis
+                st.session_state['llm_interpretation'] = ""
 
     except Exception as e:
         st.error(f"An error occurred: {e}")
