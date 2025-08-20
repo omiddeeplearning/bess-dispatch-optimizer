@@ -235,7 +235,7 @@ if st.session_state.get('total_results') is not None:
             import asyncio
             st.session_state.llm_interpretation = asyncio.run(get_llm_interpretation(results_summary, price_summary))
 
-    if st.session_state.llm_interpretation:
+    if st.session_state.get('llm_interpretation'):
         st.markdown(st.session_state.llm_interpretation)
 
     st.markdown("---")
