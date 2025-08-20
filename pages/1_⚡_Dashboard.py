@@ -6,8 +6,6 @@ from plotly.subplots import make_subplots
 from optimization_engine import DA_Dispatch, ID_Dispatch
 import io
 import json
-import vertexai
-from vertexai.generative_models import GenerativeModel
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -37,13 +35,17 @@ if 'llm_interpretation' not in st.session_state:
     st.session_state['llm_interpretation'] = ""
 
 
-# --- LLM Helper Function (Corrected for Vertex AI) ---
+# --- LLM Helper Function (Corrected with Lazy Loading) ---
 def get_llm_interpretation(results_summary, price_summary):
     """
     Sends a summary of the optimization results to the Vertex AI Gemini API
     and returns a natural language interpretation.
     """
     try:
+        # Lazy load the library to prevent startup issues on Cloud Run
+        import vertexai
+        from vertexai.generative_models import GenerativeModel
+
         # --- IMPORTANT ---
         # Initialize Vertex AI with your specific project and location.
         # The location MUST match the region of your Cloud Run service.
@@ -52,8 +54,8 @@ def get_llm_interpretation(results_summary, price_summary):
 
         vertexai.init(project=PROJECT_ID, location=LOCATION)
         
-        # Load the Gemini model - Switched to a globally available model version
-        model = GenerativeModel("gemini-1.0-pro")
+        # Load the Gemini model
+        model = GenerativeModel("gemini-1.5-flash-001")
 
         prompt = f"""
         You are an expert financial analyst in the energy sector. Your task is to provide a concise, insightful summary of a Battery Energy Storage System (BESS) dispatch optimization.
