@@ -6,7 +6,6 @@ from plotly.subplots import make_subplots
 from optimization_engine import DA_Dispatch, ID_Dispatch
 import io
 import json
-import requests # Use the standard requests library
 import vertexai
 from vertexai.generative_models import GenerativeModel
 
@@ -45,8 +44,14 @@ def get_llm_interpretation(results_summary, price_summary):
     and returns a natural language interpretation.
     """
     try:
-        # Initialize Vertex AI. This will automatically use the project's service account on Cloud Run.
-        vertexai.init()
+        # --- IMPORTANT ---
+        # Initialize Vertex AI with your specific project and location.
+        # The location MUST match the region of your Cloud Run service.
+        # Find your Project ID in the Google Cloud Console dashboard.
+        PROJECT_ID = "bess-dispatch-app"  # <-- Your Google Cloud Project ID
+        LOCATION = "us-central1"        # <-- The region of your Cloud Run service
+
+        vertexai.init(project=PROJECT_ID, location=LOCATION)
         
         # Load the Gemini model
         model = GenerativeModel("gemini-1.5-flash-001")
