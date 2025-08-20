@@ -48,12 +48,12 @@ def get_llm_interpretation(results_summary, price_summary):
         # Initialize Vertex AI with your specific project and location.
         # The location MUST match the region of your Cloud Run service.
         PROJECT_ID = "bess-dispatch-app"  # <-- Your Google Cloud Project ID
-        LOCATION = "europe-west2"        # <-- The region of your Cloud Run service
+        LOCATION = "us-central1"        # <-- The region of your Cloud Run service
 
         vertexai.init(project=PROJECT_ID, location=LOCATION)
         
-        # Load the Gemini model - Switched to a globally available model version
-        model = GenerativeModel("gemini-1.0-pro")
+        # Load the Gemini model
+        model = GenerativeModel("gemini-1.5-flash-001")
 
         prompt = f"""
         You are an expert financial analyst in the energy sector. Your task is to provide a concise, insightful summary of a Battery Energy Storage System (BESS) dispatch optimization.
