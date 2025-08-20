@@ -6,4 +6,4 @@ xlsxwriter
 seaborn
 streamlit
 plotly
-httpx
+requests

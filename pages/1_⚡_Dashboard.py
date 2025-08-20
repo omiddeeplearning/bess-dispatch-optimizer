@@ -6,7 +6,7 @@ from plotly.subplots import make_subplots
 from optimization_engine import DA_Dispatch, ID_Dispatch
 import io
 import json
-from streamlit.components.v1 import html
+import requests # Use the standard requests library
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -36,8 +36,8 @@ if 'llm_interpretation' not in st.session_state:
     st.session_state['llm_interpretation'] = ""
 
 
-# --- LLM Helper Function ---
-async def get_llm_interpretation(results_summary, price_summary):
+# --- LLM Helper Function (Corrected) ---
+def get_llm_interpretation(results_summary, price_summary):
     """
     Sends a summary of the optimization results to the Gemini API
     and returns a natural language interpretation.
@@ -77,15 +77,18 @@ async def get_llm_interpretation(results_summary, price_summary):
     api_key = "" 
     api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={api_key}"
     
-    import httpx
-    async with httpx.AsyncClient() as client:
-        response = await client.post(api_url, json=payload, headers={'Content-Type': 'application/json'})
-    
-    if response.status_code == 200:
+    try:
+        response = requests.post(api_url, json=payload, headers={'Content-Type': 'application/json'})
+        response.raise_for_status() # Will raise an HTTPError for bad responses (4xx or 5xx)
         result = response.json()
         if result.get('candidates'):
             return result['candidates'][0]['content']['parts'][0]['text']
-    return "Analysis could not be generated at this time."
+        else:
+            return f"Analysis could not be generated. API response was empty. Details: {response.text}"
+    except requests.exceptions.RequestException as e:
+        return f"Analysis failed due to a network error: {e}"
+    except Exception as e:
+        return f"An unexpected error occurred during analysis: {e}"
 
 
 # --- App Title and Description ---
@@ -232,8 +235,7 @@ if st.session_state.get('total_results') is not None:
                 "da_min": selected_price['DA[GBP/MWh]'].min(), "da_max": selected_price['DA[GBP/MWh]'].max(), "da_avg": selected_price['DA[GBP/MWh]'].mean(),
                 "id_min": selected_price['ID[GBP/MWh]'].min(), "id_max": selected_price['ID[GBP/MWh]'].max(), "id_avg": selected_price['ID[GBP/MWh]'].mean(),
             }
-            import asyncio
-            st.session_state.llm_interpretation = asyncio.run(get_llm_interpretation(results_summary, price_summary))
+            st.session_state.llm_interpretation = get_llm_interpretation(results_summary, price_summary)
 
     if st.session_state.get('llm_interpretation'):
         st.markdown(st.session_state.llm_interpretation)
