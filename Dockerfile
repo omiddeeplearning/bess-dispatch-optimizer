@@ -23,4 +23,6 @@ EXPOSE 8080
 
 # Define the command to run your app
 # This tells Streamlit to run on the port provided by the PORT environment variable
-CMD ["streamlit", "run", "👋_Introduction.py", "--server.port", "$PORT", "--server.enableCORS", "false", "--server.enableXsrfProtection", "false"]
+# Using the shell form (without brackets) ensures the $PORT variable is correctly interpreted.
+# --server.headless=true is a best practice for running in a container.
+CMD streamlit run 👋_Introduction.py --server.headless true --server.port $PORT --server.enableCORS false --server.enableXsrfProtection false
