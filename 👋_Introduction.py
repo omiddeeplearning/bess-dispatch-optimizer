@@ -51,7 +51,7 @@ def get_llm_interpretation(results_summary, price_summary, start_date, end_date)
         LOCATION = "us-central1"
 
         vertexai.init(project=PROJECT_ID, location=LOCATION)
-        model = GenerativeModel("gemini-1.0-pro")
+        model = GenerativeModel("gemini-2.5-flash-lite")
 
         prompt = f"""
         As an expert energy market analyst, create a humanized performance report for a BESS operating in the GB market between {start_date} and {end_date}.
@@ -230,7 +230,7 @@ if selected == "Introduction":
                         <h3 class="text-2xl font-semibold text-gray-800">AI-Powered Analysis</h3>
                     </div>
                     <p class="text-gray-600">
-                        Leverage Google's Gemini model for expert-level interpretation of results, automatically identifying key strategies and missed arbitrage opportunities to refine your approach.
+                        Leverage an Advanced AI model for expert-level interpretation of results, automatically identifying key strategies and missed arbitrage opportunities to refine your approach.
                     </p>
                 </div>
                 <div class="feature-card">
@@ -256,7 +256,7 @@ if selected == "Introduction":
                         <span class="bg-gray-200 text-gray-700 text-sm font-medium px-3 py-1 rounded-full">Pyomo</span>
                         <span class="bg-gray-200 text-gray-700 text-sm font-medium px-3 py-1 rounded-full">Streamlit</span>
                         <span class="bg-gray-200 text-gray-700 text-sm font-medium px-3 py-1 rounded-full">Plotly</span>
-                        <span class="bg-gray-200 text-gray-700 text-sm font-medium px-3 py-1 rounded-full">Google Gemini</span>
+                        <span class="bg-gray-200 text-gray-700 text-sm font-medium px-3 py-1 rounded-full">AI Integration</span>
                     </div>
                 </div>
             </div>
@@ -427,7 +427,7 @@ if selected == "Dashboard":
         ai_analysis_html = """
         <div style="background-color: #ffffff; border: 1px solid #dee2e6; border-radius: 16px; padding: 2rem; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);">
             <h3 style="font-family: 'Poppins', sans-serif; font-size: 1.5rem; font-weight: 600; color: #333;">🤖 AI-Powered Analysis</h3>
-            <p style="font-family: 'Poppins', sans-serif; color: #666; margin-top: 0.5rem;">Click the button below to generate an expert-level interpretation of the optimization results using Google's Gemini model.</p>
+            <p style="font-family: 'Poppins', sans-serif; color: #666; margin-top: 0.5rem;">Click the button below to generate an expert-level interpretation of the optimization results using an Advanced AI model.</p>
         </div>
         """
         st.markdown(ai_analysis_html, unsafe_allow_html=True)
