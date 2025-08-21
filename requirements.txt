@@ -7,3 +7,4 @@ seaborn
 streamlit
 plotly
 google-cloud-aiplatform>=1.43.0
+streamlit-option-menu

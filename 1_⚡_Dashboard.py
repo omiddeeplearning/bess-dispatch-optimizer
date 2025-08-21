@@ -53,18 +53,13 @@ def get_llm_interpretation(results_summary, price_summary, start_date, end_date)
         model = GenerativeModel("gemini-2.5-flash-lite")
 
         prompt = f"""
-        As an expert energy market analyst, create a humanized, narrative-style performance report for a Battery Energy Storage System (BESS) operating in the GB market.
-
-        Your analysis should tell a compelling story about the market conditions and the BESS's strategy between {start_date} and {end_date}.
+        As an expert energy market analyst, create a humanized performance report for a BESS operating in the GB market between {start_date} and {end_date}.
 
         **Instructions:**
-        1.  **Opening:** Start with a friendly, engaging opening that sets the scene for the analysis period.
-        2.  **The Story:** Describe the market dynamics during this period. For example: "Between {start_date} and {end_date}, the market was quite volatile. We saw significant price spikes in the Intra-Day market, likely due to [reason], while the Day-Ahead market remained relatively stable."
-        3.  **BESS Strategy:** Explain how the BESS responded to these conditions. For instance: "Our strategy was to charge the battery during the early morning hours when prices were low, and then discharge during the evening peak to capture those high Intra-Day prices. We primarily focused on the [DA/ID] market because..."
-        4.  **Performance Highlights:** Summarize the key outcomes in a conversational way, using the provided data. Example: "Overall, this strategy paid off, earning us a total of £{results_summary['total_revenue']:,.2f}. The majority of our earnings, about {results_summary['id_percentage']:.1f}%, came from the Intra-Day market, which shows our strategy to capitalize on volatility was successful."
-        5.  **Closing:** Conclude with a forward-looking statement or a key takeaway.
+        1.  **Narrative Summary (One Paragraph):** Write a single paragraph that tells the story of the market during this period and how the BESS strategically responded. Mention key market dynamics (e.g., volatility, price spikes) and the battery's core actions (e.g., charging low, discharging high, focusing on a specific market).
+        2.  **Key Highlights (Max 4 Bullet Points):** After the paragraph, provide up to four bullet points summarizing the most important outcomes.
 
-        **Key Data Points:**
+        **Key Data Points to Weave into the Narrative and Highlights:**
         - **Analysis Period:** {start_date} to {end_date}
         - **Total Revenue:** £{results_summary['total_revenue']:,.2f}
         - **DA Market Revenue:** £{results_summary['da_revenue']:,.2f} ({results_summary['da_percentage']:.1f}%)
@@ -146,6 +141,22 @@ data_source = st.radio(
 
 price_df = None
 if data_source == "Upload your own CSV file":
+    with st.expander("View Data Template and Instructions"):
+        st.info("""
+            **Please ensure your CSV file has the following three columns:**
+            1.  `UTC_PERIOD_START_DATETIME`: The timestamp for the start of the period (e.g., `2023-01-01 00:00:00`).
+            2.  `N2EX`: The Day-Ahead (DA) price in £/MWh.
+            3.  `MIP`: The Intra-Day (ID) price in £/MWh.
+            
+            **Example Format:**
+        """)
+        template_df = pd.DataFrame({
+            'UTC_PERIOD_START_DATETIME': ['2023-01-01 00:00:00', '2023-01-01 00:30:00'],
+            'N2EX': [150.50, 145.20],
+            'MIP': [155.75, 148.90]
+        })
+        st.dataframe(template_df)
+
     uploaded_file = st.file_uploader("Upload Price Data (CSV)", type="csv")
     if uploaded_file:
         price_df = pd.read_csv(uploaded_file)
