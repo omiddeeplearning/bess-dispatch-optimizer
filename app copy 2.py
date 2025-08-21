@@ -1,6 +1,5 @@
 # app.py
 import streamlit as st
-import streamlit.components.v1 as components
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -21,20 +20,9 @@ local_css("style.css")
 
 
 # --- About Page Content ---
-# st.image("https://storage.googleapis.com/gemini-studio-images/google-ai-studio-gemini-logo-2024.svg", width=100)
+st.image("https://storage.googleapis.com/gemini-studio-images/google-ai-studio-gemini-logo-2024.svg", width=100)
 
 st.title("About This Application")
-
-# --- Embed the Interactive Battery Simulator ---
-st.header("Live Battery AI Simulation")
-try:
-    with open("battery_sim.html", 'r', encoding='utf-8') as f:
-        html_code = f.read()
-        components.html(html_code, height=750, scrolling=False)
-except FileNotFoundError:
-    st.error("The battery_sim.html file was not found. Please make sure it's in the same directory as app.py.")
-
-
 st.markdown("""
 This application provides a tool for optimizing Battery Energy Storage System (BESS) dispatch in Day-Ahead (DA) and Intra-Day (ID) markets.
 
