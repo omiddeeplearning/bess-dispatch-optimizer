@@ -6,6 +6,7 @@ from plotly.subplots import make_subplots
 from optimization_engine import DA_Dispatch, ID_Dispatch
 import io
 import json
+import streamlit.components.v1 as components
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -35,56 +36,41 @@ if 'llm_interpretation' not in st.session_state:
     st.session_state['llm_interpretation'] = ""
 
 
-# --- LLM Helper Function (Corrected with Lazy Loading and new model) ---
-def get_llm_interpretation(results_summary, price_summary):
+# --- LLM Helper Function ---
+def get_llm_interpretation(results_summary, price_summary, start_date, end_date):
     """
     Sends a summary of the optimization results to the Vertex AI Gemini API
     and returns a natural language interpretation.
     """
     try:
-        # Lazy load the library to prevent startup issues on Cloud Run
         import vertexai
         from vertexai.generative_models import GenerativeModel
 
-        # --- IMPORTANT ---
-        # Initialize Vertex AI with your specific project and location.
-        # The location MUST match the region of your Cloud Run service.
-        PROJECT_ID = "bess-dispatch-app"  # <-- Your Google Cloud Project ID
-        LOCATION = "us-central1"        # <-- The region of your Cloud Run service
+        PROJECT_ID = "bess-dispatch-app"
+        LOCATION = "us-central1"
 
         vertexai.init(project=PROJECT_ID, location=LOCATION)
-        
-        # Load the Gemini model - Using the correct model name for the region
         model = GenerativeModel("gemini-2.5-flash-lite")
 
         prompt = f"""
-        You are an expert financial analyst in the energy sector. Your task is to provide a concise, insightful summary of a Battery Energy Storage System (BESS) dispatch optimization.
+        As an expert energy market analyst, create a humanized, narrative-style performance report for a Battery Energy Storage System (BESS) operating in the GB market.
 
-        Based on the following results and market price data, provide a brief analysis (in 4-5 bullet points). 
-        In addition to the points below, please analyze the price data to identify potential arbitrage opportunities (significant spreads between high and low prices) and comment on how effectively the optimization strategy captured these opportunities.
+        Your analysis should tell a compelling story about the market conditions and the BESS's strategy between {start_date} and {end_date}.
 
-        Focus on:
-        1.  Overall revenue performance.
-        2.  The market participation split (Day-Ahead vs. Intra-Day).
-        3.  Notable strategic behavior (e.g., capitalizing on price volatility).
-        4.  How well the strategy captured available price spreads in the markets.
+        **Instructions:**
+        1.  **Opening:** Start with a friendly, engaging opening that sets the scene for the analysis period.
+        2.  **The Story:** Describe the market dynamics during this period. For example: "Between {start_date} and {end_date}, the market was quite volatile. We saw significant price spikes in the Intra-Day market, likely due to [reason], while the Day-Ahead market remained relatively stable."
+        3.  **BESS Strategy:** Explain how the BESS responded to these conditions. For instance: "Our strategy was to charge the battery during the early morning hours when prices were low, and then discharge during the evening peak to capture those high Intra-Day prices. We primarily focused on the [DA/ID] market because..."
+        4.  **Performance Highlights:** Summarize the key outcomes in a conversational way, using the provided data. Example: "Overall, this strategy paid off, earning us a total of £{results_summary['total_revenue']:,.2f}. The majority of our earnings, about {results_summary['id_percentage']:.1f}%, came from the Intra-Day market, which shows our strategy to capitalize on volatility was successful."
+        5.  **Closing:** Conclude with a forward-looking statement or a key takeaway.
 
-        Results Summary:
-        - Total Revenue: £{results_summary['total_revenue']:,.2f}
-        - Day-Ahead (DA) Market Revenue: £{results_summary['da_revenue']:,.2f}
-        - Intra-Day (ID) Market Revenue: £{results_summary['id_revenue']:,.2f}
-        - DA Revenue Percentage: {results_summary['da_percentage']:.1f}%
-        - ID Revenue Percentage: {results_summary['id_percentage']:.1f}%
-        - Total Simulation Days: {results_summary['total_days']}
-        - Average Daily Revenue: £{results_summary['avg_daily_revenue']:,.2f}
-        - BESS Power: {results_summary['bess_power']} MW
-        - BESS Capacity: {results_summary['bess_capacity']} MWh
-
-        Market Price Summary (£/MWh) for the period:
-        - DA Price - Min: {price_summary['da_min']:.2f}, Max: {price_summary['da_max']:.2f}, Avg: {price_summary['da_avg']:.2f}
-        - ID Price - Min: {price_summary['id_min']:.2f}, Max: {price_summary['id_max']:.2f}, Avg: {price_summary['id_avg']:.2f}
-
-        Please begin your analysis with a clear, one-sentence summary.
+        **Key Data Points:**
+        - **Analysis Period:** {start_date} to {end_date}
+        - **Total Revenue:** £{results_summary['total_revenue']:,.2f}
+        - **DA Market Revenue:** £{results_summary['da_revenue']:,.2f} ({results_summary['da_percentage']:.1f}%)
+        - **ID Market Revenue:** £{results_summary['id_revenue']:,.2f} ({results_summary['id_percentage']:.1f}%)
+        - **DA Price Range:** £{price_summary['da_min']:.2f} to £{price_summary['da_max']:.2f}
+        - **ID Price Range:** £{price_summary['id_min']:.2f} to £{price_summary['id_max']:.2f}
         """
         
         response = model.generate_content(prompt)
@@ -95,8 +81,38 @@ def get_llm_interpretation(results_summary, price_summary):
 
 
 # --- App Title and Description ---
-st.title("🔋 BESS Dispatch Optimizer Dashboard")
-st.markdown("Run the BESS dispatch optimization and visualize the results.")
+dashboard_header_html = """
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        .header-gradient {
+            background: linear-gradient(90deg, #e3f2fd, #f0f2f5);
+        }
+    </style>
+</head>
+<body class="bg-transparent">
+    <div class="header-gradient p-8 rounded-2xl border border-gray-200">
+        <h1 class="text-4xl md:text-5xl font-bold text-gray-800">
+            🔋 BESS Dispatch Dashboard
+        </h1>
+        <p class="text-lg text-gray-600 mt-2">
+            Configure your BESS parameters, run the optimization, and visualize the financial results.
+        </p>
+    </div>
+</body>
+</html>
+"""
+components.html(dashboard_header_html, height=180)
+
 
 # --- Sidebar ---
 st.sidebar.header("BESS Control Parameters")
@@ -120,11 +136,12 @@ DA_forecasting_error = st.sidebar.slider("DA Forecasting Error (%)", 0, 25, 0, 5
 ID_forecasting_error = st.sidebar.slider("ID Forecasting Error (%)", 0, 25, 0, 5) / 100.0
 
 # --- Data Input Section ---
-st.subheader("1. Select Price Data")
+st.markdown("---")
+st.subheader("Simulation Setup")
 data_source = st.radio(
     "Choose a data source:",
     ("Use Default Case (2021-2024)", "Upload your own CSV file"),
-    horizontal=True, label_visibility="collapsed"
+    horizontal=True
 )
 
 price_df = None
@@ -135,7 +152,6 @@ if data_source == "Upload your own CSV file":
 else:
     try:
         price_df = pd.read_csv("price_dataset.csv")
-        st.success("Default 2021-2024 price data loaded.")
     except FileNotFoundError:
         st.error("Default `price_dataset.csv` not found.")
 
@@ -145,14 +161,15 @@ if price_df is not None:
         price_df = price_df.set_index('UTC_PERIOD_START_DATETIME')
         price_df.rename(columns={"N2EX": "DA[GBP/MWh]", "MIP": "ID[GBP/MWh]"}, inplace=True)
 
-        st.subheader("2. Define Simulation Period & Run")
-        col1, col2, col3 = st.columns([1,1,2])
-        start_date = col1.date_input("Start Date", price_df.index.min().date(), min_value=price_df.index.min().date(), max_value=price_df.index.max().date())
-        end_date = col2.date_input("End Date", price_df.index.min().date() + pd.Timedelta(days=6), min_value=start_date, max_value=price_df.index.max().date())
+        col1, col2 = st.columns(2)
+        with col1:
+            start_date = st.date_input("Start Date", price_df.index.min().date(), min_value=price_df.index.min().date(), max_value=price_df.index.max().date())
+        with col2:
+            end_date = st.date_input("End Date", price_df.index.min().date() + pd.Timedelta(days=6), min_value=start_date, max_value=price_df.index.max().date())
         
         selected_price = price_df.loc[str(start_date):str(end_date)]
 
-        if col3.button("🚀 Run Optimization", use_container_width=True):
+        if st.button("🚀 Run Optimization", use_container_width=True):
             with st.spinner("Running optimization..."):
                 st.session_state.clear() 
                 battery_params = {
@@ -198,6 +215,8 @@ if price_df is not None:
                 st.session_state['selected_price'] = selected_price
                 st.session_state['BESS_Power'] = BESS_Power
                 st.session_state['llm_interpretation'] = ""
+                st.session_state['start_date_str'] = start_date.strftime("%Y-%m-%d")
+                st.session_state['end_date_str'] = end_date.strftime("%Y-%m-%d")
 
     except Exception as e:
         st.error(f"An error occurred: {e}")
@@ -207,23 +226,76 @@ if st.session_state.get('total_results') is not None:
     total_results = st.session_state['total_results']
     selected_price = st.session_state['selected_price']
     BESS_Power = st.session_state['BESS_Power']
+    start_date_str = st.session_state.get('start_date_str', '')
+    end_date_str = st.session_state.get('end_date_str', '')
 
-    DA_COLOR, ID_COLOR, CHARGE_DA_COLOR, CHARGE_ID_COLOR, SOC_COLOR, PRICE_DA_COLOR, PRICE_ID_COLOR = '#F08080', '#6495ED', '#8FBC8F', '#98FB98', '#ADD8E6', 'rgba(255, 255, 255, 0.5)', 'rgba(200, 200, 200, 0.5)'
+    # --- Updated Color Palette ---
+    DA_COLOR, ID_COLOR = '#d62728', '#1f77b4' # Red for DA, Blue for ID
+    CHARGE_DA_COLOR, CHARGE_ID_COLOR = '#ff9896', '#aec7e8' # Lighter shades for charging
+    SOC_COLOR = '#2ca02c' # Green for SoC
+    PRICE_DA_COLOR, PRICE_ID_COLOR = 'rgba(255, 127, 14, 0.9)', 'rgba(31, 119, 180, 0.9)' # Orange for DA Price, Blue for ID Price
 
+    st.markdown("---")
     st.subheader("Key Performance Indicators")
     da_revenue = total_results['DA_Revenue_GBP'].sum()
     id_revenue = total_results['ID_Revenue_GBP'].sum()
     total_revenue = da_revenue + id_revenue
     
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Total Revenue", f"£{total_revenue:,.2f}")
-    col2.metric("DA Market Revenue", f"£{da_revenue:,.2f}")
-    col3.metric("ID Market Revenue", f"£{id_revenue:,.2f}")
+    kpi_html = f"""
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+        <style>
+            body {{ font-family: 'Poppins', sans-serif; }}
+            .kpi-card {{
+                background-color: #ffffff;
+                border: 1px solid #dee2e6;
+                border-radius: 16px;
+                padding: 1.5rem;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+                transition: all 0.3s ease;
+            }}
+            .kpi-card:hover {{
+                transform: translateY(-5px);
+                box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+            }}
+        </style>
+    </head>
+    <body class="bg-transparent">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="kpi-card">
+                <p class="text-lg text-gray-500">Total Revenue</p>
+                <p class="text-4xl font-bold text-gray-800">£{total_revenue:,.2f}</p>
+            </div>
+            <div class="kpi-card">
+                <p class="text-lg text-gray-500">DA Market Revenue</p>
+                <p class="text-4xl font-bold text-blue-600">£{da_revenue:,.2f}</p>
+            </div>
+            <div class="kpi-card">
+                <p class="text-lg text-gray-500">ID Market Revenue</p>
+                <p class="text-4xl font-bold text-red-600">£{id_revenue:,.2f}</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    components.html(kpi_html, height=150)
 
     st.markdown("---")
     
-    st.subheader("🤖 AI-Powered Analysis")
-    if st.button("Generate Analysis"):
+    ai_analysis_html = """
+    <div style="background-color: #ffffff; border: 1px solid #dee2e6; border-radius: 16px; padding: 2rem; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);">
+        <h3 style="font-family: 'Poppins', sans-serif; font-size: 1.5rem; font-weight: 600; color: #333;">🤖 AI-Powered Analysis</h3>
+        <p style="font-family: 'Poppins', sans-serif; color: #666; margin-top: 0.5rem;">
+            Click the button below to generate an expert-level interpretation of the optimization results using Google's Gemini model.
+        </p>
+    </div>
+    """
+    st.markdown(ai_analysis_html, unsafe_allow_html=True)
+    if st.button("Generate Analysis", use_container_width=True):
         with st.spinner("AI is analyzing the results..."):
             total_days = (selected_price.index.max() - selected_price.index.min()).days
             results_summary = {
@@ -238,10 +310,10 @@ if st.session_state.get('total_results') is not None:
                 "da_min": selected_price['DA[GBP/MWh]'].min(), "da_max": selected_price['DA[GBP/MWh]'].max(), "da_avg": selected_price['DA[GBP/MWh]'].mean(),
                 "id_min": selected_price['ID[GBP/MWh]'].min(), "id_max": selected_price['ID[GBP/MWh]'].max(), "id_avg": selected_price['ID[GBP/MWh]'].mean(),
             }
-            st.session_state.llm_interpretation = get_llm_interpretation(results_summary, price_summary)
+            st.session_state.llm_interpretation = get_llm_interpretation(results_summary, price_summary, start_date_str, end_date_str)
 
     if st.session_state.get('llm_interpretation'):
-        st.markdown(st.session_state.llm_interpretation)
+        st.info(st.session_state.llm_interpretation)
 
     st.markdown("---")
 
@@ -253,7 +325,7 @@ if st.session_state.get('total_results') is not None:
         fig_daily_rev = go.Figure()
         fig_daily_rev.add_trace(go.Bar(x=daily_revenue_normalized.index, y=daily_revenue_normalized['DA_Revenue_GBP'], name='DA Revenue', marker_color=DA_COLOR))
         fig_daily_rev.add_trace(go.Bar(x=daily_revenue_normalized.index, y=daily_revenue_normalized['ID_Revenue_GBP'], name='ID Revenue', marker_color=ID_COLOR))
-        fig_daily_rev.update_layout(barmode='stack', template="plotly_dark", legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), height=350, margin=dict(l=20, r=20, t=30, b=20))
+        fig_daily_rev.update_layout(barmode='stack', template="plotly_white", legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), height=350, margin=dict(l=20, r=20, t=30, b=20))
         st.plotly_chart(fig_daily_rev, use_container_width=True)
 
     with col_rev2:
@@ -267,7 +339,7 @@ if st.session_state.get('total_results') is not None:
             fig_yearly_rev = go.Figure()
             fig_yearly_rev.add_trace(go.Bar(x=yearly_revenue_normalized.index, y=yearly_revenue_normalized['DA_Revenue_GBP'], name='DA Revenue', marker_color=DA_COLOR))
             fig_yearly_rev.add_trace(go.Bar(x=yearly_revenue_normalized.index, y=yearly_revenue_normalized['ID_Revenue_GBP'], name='ID Revenue', marker_color=ID_COLOR))
-            fig_yearly_rev.update_layout(barmode='group', template="plotly_dark", legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), height=350, margin=dict(l=20, r=20, t=30, b=20))
+            fig_yearly_rev.update_layout(barmode='group', template="plotly_white", legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), height=350, margin=dict(l=20, r=20, t=30, b=20))
             st.plotly_chart(fig_yearly_rev, use_container_width=True)
 
     with col_rev3:
@@ -279,7 +351,7 @@ if st.session_state.get('total_results') is not None:
         else:
             fig_pie = go.Figure(data=[go.Pie(labels=list(positive_revenue_data.keys()), values=list(positive_revenue_data.values()), hole=.4)])
             fig_pie.update_traces(marker=dict(colors=[DA_COLOR, ID_COLOR]))
-            fig_pie.update_layout(template="plotly_dark", height=350, showlegend=True, margin=dict(l=20, r=20, t=30, b=20))
+            fig_pie.update_layout(template="plotly_white", height=350, showlegend=True, margin=dict(l=20, r=20, t=30, b=20))
             st.plotly_chart(fig_pie, use_container_width=True)
 
     st.markdown("---")
@@ -295,7 +367,9 @@ if st.session_state.get('total_results') is not None:
     fig_dispatch.add_trace(go.Bar(x=plot_data.index, y=plot_data['ID_Discharge_MWh'], name='Discharge ID', marker_color=ID_COLOR), secondary_y=False)
     fig_dispatch.add_trace(go.Bar(x=plot_data.index, y=-plot_data['ID_Charge_MWh'], name='Charge ID', marker_color=CHARGE_ID_COLOR), secondary_y=False)
     fig_dispatch.add_trace(go.Scatter(x=plot_data.index, y=plot_data['SoC_Final_MWh'], name='SoC', mode='lines', line=dict(color=SOC_COLOR)), secondary_y=False)
-    fig_dispatch.add_trace(go.Scatter(x=plot_price_data.index, y=plot_price_data['DA[GBP/MWh]'], name='DA Price', mode='lines', line=dict(color=PRICE_DA_COLOR, dash='dash')), secondary_y=True)
-    fig_dispatch.add_trace(go.Scatter(x=plot_price_data.index, y=plot_price_data['ID[GBP/MWh]'], name='ID Price', mode='lines', line=dict(color=PRICE_ID_COLOR, dash='dot')), secondary_y=True)
-    fig_dispatch.update_layout(barmode='relative', title_text="Daily Dispatch Profile", template="plotly_dark", legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+    fig_dispatch.add_trace(go.Scatter(x=plot_price_data.index, y=plot_price_data['DA[GBP/MWh]'], name='DA Price', mode='lines', line=dict(color=PRICE_DA_COLOR, dash='dash', width=2)), secondary_y=True)
+    fig_dispatch.add_trace(go.Scatter(x=plot_price_data.index, y=plot_price_data['ID[GBP/MWh]'], name='ID Price', mode='lines', line=dict(color=PRICE_ID_COLOR, dash='dot', width=2)), secondary_y=True)
+    fig_dispatch.update_layout(barmode='relative', title_text="Daily Dispatch Profile", template="plotly_white", legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+    fig_dispatch.update_yaxes(title_text="Power (MW) / SoC (MWh)", secondary_y=False)
+    fig_dispatch.update_yaxes(title_text="Price (£/MWh)", secondary_y=True)
     st.plotly_chart(fig_dispatch, use_container_width=True)

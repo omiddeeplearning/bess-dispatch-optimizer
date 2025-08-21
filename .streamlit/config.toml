@@ -2,16 +2,16 @@
 
 [theme]
 # The primary accent color for interactive elements.
-primaryColor="#f63366"
+primaryColor="#007bff"
 
 # Background color for the main content area.
-backgroundColor="#0E1117"
+backgroundColor="#f0f2f5"
 
 # Background color for sidebar and most interactive widgets.
-secondaryBackgroundColor="#262730"
+secondaryBackgroundColor="#ffffff"
 
 # Color for all text elements.
-textColor="#FAFAFA"
+textColor="#333333"
 
 # Font family for all text elements.
-font="sans serif"
+font="Poppins"
