@@ -80,3 +80,28 @@ div[data-testid="stSidebarUserContent"] {
     border-radius: 12px;
     border: 1px solid #dee2e6;
 }
+
+/* --- Mobile Responsiveness --- */
+@media (max-width: 768px) {
+    /* Reduce font sizes for headers on mobile */
+    h1 {
+        font-size: 2.5rem;
+    }
+    h2 {
+        font-size: 1.75rem;
+    }
+    h3 {
+        font-size: 1.25rem;
+    }
+
+    /* Adjust padding for cards on mobile */
+    div[data-testid="metric-container"],
+    div.stPlotlyChart {
+        padding: 15px;
+    }
+
+    /* Ensure embedded HTML components are full-width */
+    .stHtml {
+        width: 100%;
+    }
+}
