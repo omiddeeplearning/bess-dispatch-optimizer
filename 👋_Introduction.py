@@ -51,7 +51,7 @@ def get_llm_interpretation(results_summary, price_summary, start_date, end_date)
         LOCATION = "us-central1"
 
         vertexai.init(project=PROJECT_ID, location=LOCATION)
-        model = GenerativeModel("gemini-1.0-pro")
+        model = GenerativeModel("gemini-2.5-flash-lite")
 
         prompt = f"""
         As an expert energy market analyst, create a humanized performance report for a BESS operating in the GB market between {start_date} and {end_date}.
