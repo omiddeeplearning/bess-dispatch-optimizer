@@ -21,7 +21,8 @@ COPY . .
 # Expose the port that Cloud Run will use
 EXPOSE 8080
 
-# Define the command to run your app
+# Define the command to run your app 
 # The key change is adding --server.address=0.0.0.0
 # This tells Streamlit to listen for connections from outside the container, which is required by Cloud Run.
 CMD streamlit run 👋_Introduction.py --server.headless true --server.address=0.0.0.0 --server.port $PORT --server.enableCORS false --server.enableXsrfProtection false
+
